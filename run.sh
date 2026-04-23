@@ -25,7 +25,7 @@ $CC $CFLAGS $INCLUDES -Wl,-Tkernel/kernel.ld -Wl,-Map=kernel.map -o kernel.elf \
     common/common.c shell.bin.o
 
 # OpenSBI fw_dynamic -> S-mode -> kernel entry @ 0x80200000
-$QEMU -machine virt -bios default -nographic -serial mon:stdio --no-reboot \
+$QEMU -machine virt -m 512M -bios default -nographic -serial mon:stdio --no-reboot \
     -d unimp,guest_errors,int,cpu_reset -D qemu.log \
     -drive id=drive0,file=lorem.txt,format=raw,if=none \
     -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 \

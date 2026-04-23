@@ -33,6 +33,6 @@ SECTIONS {
     /* Free RAM pool used by the kernel page allocator. */
     . = ALIGN(4096);
     __free_ram = .;
-    . += 64 * 1024 * 1024;
+    . += 256 * 1024 * 1024;
     __free_ram_end = .;
 }
