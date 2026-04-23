@@ -1,0 +1,36 @@
+{
+    "version": 4,
+    "configurations": [
+        {
+            "name": "riscv64-kernel",
+            "compilerPath": "/usr/bin/clang",
+            "compilerArgs": [
+                "--target=riscv64-unknown-elf",
+                "-march=rv64imac_zicsr_zifencei",
+                "-mabi=lp64",
+                "-mcmodel=medany",
+                "-mno-relax",
+                "-ffreestanding",
+                "-nostdlib",
+                "-fno-stack-protector",
+                "-std=c11"
+            ],
+            "includePath": [
+                "${workspaceFolder}/common",
+                "${workspaceFolder}/kernel",
+                "${workspaceFolder}/user"
+            ],
+            "defines": [],
+            "cStandard": "c11",
+            "intelliSenseMode": "${default}",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/common",
+                    "${workspaceFolder}/kernel",
+                    "${workspaceFolder}/user"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ]
+}

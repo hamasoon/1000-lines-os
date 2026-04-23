@@ -3,12 +3,6 @@
 
 #include "common.h"
 
-/**
- * @brief struct sbiret - return type for SBI calls
- *
- * @error: error code returned by the SBI call
- * @value: value returned by the SBI call (if any)
- */
 typedef struct __sbiret {
     long error;
     long value;

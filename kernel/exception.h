@@ -16,11 +16,12 @@
         __asm__ __volatile__("csrw " #reg ", %0" ::"r"(__tmp));                \
     } while (0)
 
-#define PAGE_TABLE_LEVELS 2
-#define PAGE_TABLE_ENTRIES 1024 // TODO: do i have to define this as calculatable from PAGE_SIZE and size of pointer?
 #define SCAUSE_ECALL 8
 
-typedef struct PACKED __trap_frame {
+/* 31 GPRs * 8B = 248B, padded to 256B (16B aligned). lp64 psABI requires
+ * SP 16B-aligned at function call boundaries; 248B alone would leave
+ * handle_trap()'s entry SP off by 8. */
+typedef struct __trap_frame {
     uint64_t ra;
     uint64_t gp;
     uint64_t tp;
@@ -51,10 +52,11 @@ typedef struct PACKED __trap_frame {
     uint64_t s9;
     uint64_t s10;
     uint64_t s11;
-    uint64_t sp;
+    uint64_t sp;        /* trapping sp (user or kernel) */
+    uint64_t _pad;      /* alignment only -- never touched by asm */
 } trap_frame_t;
 
-void kernel_entry(void); 
+void kernel_entry(void);
 void handle_syscall(trap_frame_t *f);
 void handle_trap(trap_frame_t *f);
 

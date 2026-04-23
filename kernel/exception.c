@@ -3,87 +3,89 @@
 #include "sbi.h"
 #include "process.h"
 
+/* Trap entry. Invariants on entry:
+ *   sp       = trapping SP (user or kernel)
+ *   sscratch = current process's kernel stack top (set by yield/switch)
+ * csrrw swaps sp<->sscratch so we always run on the process's kernel stack.
+ * Slot 30 holds the trapping sp; slot 31 is pad (see trap_frame_t). */
 NAKED
 ALIGNED(4)
 void kernel_entry(void) {
     __asm__ __volatile__(
-        // Retrieve the kernel stack of the running process from sscratch.
         "csrrw sp, sscratch, sp\n"
 
-        "addi sp, sp, -4 * 31\n"
-        "sw ra,  4 * 0(sp)\n"
-        "sw gp,  4 * 1(sp)\n"
-        "sw tp,  4 * 2(sp)\n"
-        "sw t0,  4 * 3(sp)\n"
-        "sw t1,  4 * 4(sp)\n"
-        "sw t2,  4 * 5(sp)\n"
-        "sw t3,  4 * 6(sp)\n"
-        "sw t4,  4 * 7(sp)\n"
-        "sw t5,  4 * 8(sp)\n"
-        "sw t6,  4 * 9(sp)\n"
-        "sw a0,  4 * 10(sp)\n"
-        "sw a1,  4 * 11(sp)\n"
-        "sw a2,  4 * 12(sp)\n"
-        "sw a3,  4 * 13(sp)\n"
-        "sw a4,  4 * 14(sp)\n"
-        "sw a5,  4 * 15(sp)\n"
-        "sw a6,  4 * 16(sp)\n"
-        "sw a7,  4 * 17(sp)\n"
-        "sw s0,  4 * 18(sp)\n"
-        "sw s1,  4 * 19(sp)\n"
-        "sw s2,  4 * 20(sp)\n"
-        "sw s3,  4 * 21(sp)\n"
-        "sw s4,  4 * 22(sp)\n"
-        "sw s5,  4 * 23(sp)\n"
-        "sw s6,  4 * 24(sp)\n"
-        "sw s7,  4 * 25(sp)\n"
-        "sw s8,  4 * 26(sp)\n"
-        "sw s9,  4 * 27(sp)\n"
-        "sw s10, 4 * 28(sp)\n"
-        "sw s11, 4 * 29(sp)\n"
+        "addi sp, sp, -8 * 32\n"
+        "sd ra,  8 * 0(sp)\n"
+        "sd gp,  8 * 1(sp)\n"
+        "sd tp,  8 * 2(sp)\n"
+        "sd t0,  8 * 3(sp)\n"
+        "sd t1,  8 * 4(sp)\n"
+        "sd t2,  8 * 5(sp)\n"
+        "sd t3,  8 * 6(sp)\n"
+        "sd t4,  8 * 7(sp)\n"
+        "sd t5,  8 * 8(sp)\n"
+        "sd t6,  8 * 9(sp)\n"
+        "sd a0,  8 * 10(sp)\n"
+        "sd a1,  8 * 11(sp)\n"
+        "sd a2,  8 * 12(sp)\n"
+        "sd a3,  8 * 13(sp)\n"
+        "sd a4,  8 * 14(sp)\n"
+        "sd a5,  8 * 15(sp)\n"
+        "sd a6,  8 * 16(sp)\n"
+        "sd a7,  8 * 17(sp)\n"
+        "sd s0,  8 * 18(sp)\n"
+        "sd s1,  8 * 19(sp)\n"
+        "sd s2,  8 * 20(sp)\n"
+        "sd s3,  8 * 21(sp)\n"
+        "sd s4,  8 * 22(sp)\n"
+        "sd s5,  8 * 23(sp)\n"
+        "sd s6,  8 * 24(sp)\n"
+        "sd s7,  8 * 25(sp)\n"
+        "sd s8,  8 * 26(sp)\n"
+        "sd s9,  8 * 27(sp)\n"
+        "sd s10, 8 * 28(sp)\n"
+        "sd s11, 8 * 29(sp)\n"
 
-        // Retrieve and save the sp at the time of exception.
         "csrr a0, sscratch\n"
-        "sw a0,  4 * 30(sp)\n"
+        "sd a0,  8 * 30(sp)\n"
 
-        // Reset the kernel stack.
-        "addi a0, sp, 4 * 31\n"
+        "addi a0, sp, 8 * 32\n"
         "csrw sscratch, a0\n"
 
         "mv a0, sp\n"
         "call handle_trap\n"
 
-        "lw ra,  4 * 0(sp)\n"
-        "lw gp,  4 * 1(sp)\n"
-        "lw tp,  4 * 2(sp)\n"
-        "lw t0,  4 * 3(sp)\n"
-        "lw t1,  4 * 4(sp)\n"
-        "lw t2,  4 * 5(sp)\n"
-        "lw t3,  4 * 6(sp)\n"
-        "lw t4,  4 * 7(sp)\n"
-        "lw t5,  4 * 8(sp)\n"
-        "lw t6,  4 * 9(sp)\n"
-        "lw a0,  4 * 10(sp)\n"
-        "lw a1,  4 * 11(sp)\n"
-        "lw a2,  4 * 12(sp)\n"
-        "lw a3,  4 * 13(sp)\n"
-        "lw a4,  4 * 14(sp)\n"
-        "lw a5,  4 * 15(sp)\n"
-        "lw a6,  4 * 16(sp)\n"
-        "lw a7,  4 * 17(sp)\n"
-        "lw s0,  4 * 18(sp)\n"
-        "lw s1,  4 * 19(sp)\n"
-        "lw s2,  4 * 20(sp)\n"
-        "lw s3,  4 * 21(sp)\n"
-        "lw s4,  4 * 22(sp)\n"
-        "lw s5,  4 * 23(sp)\n"
-        "lw s6,  4 * 24(sp)\n"
-        "lw s7,  4 * 25(sp)\n"
-        "lw s8,  4 * 26(sp)\n"
-        "lw s9,  4 * 27(sp)\n"
-        "lw s10, 4 * 28(sp)\n"
-        "lw s11, 4 * 29(sp)\n"
-        "lw sp,  4 * 30(sp)\n"
+        "ld ra,  8 * 0(sp)\n"
+        "ld gp,  8 * 1(sp)\n"
+        "ld tp,  8 * 2(sp)\n"
+        "ld t0,  8 * 3(sp)\n"
+        "ld t1,  8 * 4(sp)\n"
+        "ld t2,  8 * 5(sp)\n"
+        "ld t3,  8 * 6(sp)\n"
+        "ld t4,  8 * 7(sp)\n"
+        "ld t5,  8 * 8(sp)\n"
+        "ld t6,  8 * 9(sp)\n"
+        "ld a0,  8 * 10(sp)\n"
+        "ld a1,  8 * 11(sp)\n"
+        "ld a2,  8 * 12(sp)\n"
+        "ld a3,  8 * 13(sp)\n"
+        "ld a4,  8 * 14(sp)\n"
+        "ld a5,  8 * 15(sp)\n"
+        "ld a6,  8 * 16(sp)\n"
+        "ld a7,  8 * 17(sp)\n"
+        "ld s0,  8 * 18(sp)\n"
+        "ld s1,  8 * 19(sp)\n"
+        "ld s2,  8 * 20(sp)\n"
+        "ld s3,  8 * 21(sp)\n"
+        "ld s4,  8 * 22(sp)\n"
+        "ld s5,  8 * 23(sp)\n"
+        "ld s6,  8 * 24(sp)\n"
+        "ld s7,  8 * 25(sp)\n"
+        "ld s8,  8 * 26(sp)\n"
+        "ld s9,  8 * 27(sp)\n"
+        "ld s10, 8 * 28(sp)\n"
+        "ld s11, 8 * 29(sp)\n"
+        "ld sp,  8 * 30(sp)\n"
         "sret\n"
     );
 }
@@ -100,17 +102,16 @@ void handle_syscall(trap_frame_t *f) {
                     f->a0 = ch;
                     break;
                 }
-
-                yield(); // why do we need to yield here? 
+                yield();
             }
             break;
         case SYS_EXIT:
             printf("process %d exited\n", current_proc->pid);
             current_proc->state = PROC_EXITED;
-            yield();                                            // yield to scheduler for clean up
+            yield();
             PANIC("unreachable");
         default:
-            PANIC("unexpected syscall a3=%x\n", f->a3);
+            PANIC("unexpected syscall a3=%llx\n", (uint64_t) f->a3);
     }
 }
 
@@ -122,7 +123,8 @@ void handle_trap(trap_frame_t *f) {
         handle_syscall(f);
         user_pc += 4;
     } else {
-        PANIC("unexpected trap scause=%x, stval=%x, sepc=%x\n", scause, stval, user_pc);
+        PANIC("unexpected trap scause=%llx, stval=%llx, sepc=%llx\n",
+              (uint64_t) scause, (uint64_t) stval, (uint64_t) user_pc);
     }
 
     WRITE_CSR(sepc, user_pc);

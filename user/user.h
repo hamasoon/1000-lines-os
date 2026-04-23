@@ -3,11 +3,11 @@
 
 #include "common.h"
 
-int syscall(int sysno, int arg0, int arg1, int arg2);
+long syscall(long sysno, long arg0, long arg1, long arg2);
 void putchar(char ch);
 int getchar(void);
 NORETURN void exit(void);
-int read(const char *filename, char *buf, int len);
-int write(const char *filename, const char *buf, int len);
+long read(const char *filename, char *buf, long len);
+long write(const char *filename, const char *buf, long len);
 
 #endif /* USER_H */

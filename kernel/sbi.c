@@ -1,17 +1,9 @@
 #include "sbi.h"
 
-/**
- * sbi_call - call openSBIs' ecall interface
- * @arg0-arg5: arguments for the SBI call
- * @fid: SBI function ID (e.g., console putchar, shutdown, etc.)
- * @eid: SBI extension ID (e.g., base, timer, etc.)
- *
- * SBI (Supervisor Binary Interface) is a standard interface for RISC-V systems
- * that allows the supervisor mode (kernel) to call functions provided by the
- * machine mode (firmware). All registers except a0 & a1 must be preserved
- * across an SBI call by the callee. SBI functions return a pair of values in
- * a0 and a1, with a0 returning an error code.
- */
+/* SBI (Supervisor Binary Interface) lets S-mode call into M-mode firmware
+ * via ecall. Args go in a0..a5, function ID in a6, extension ID in a7.
+ * Return comes back in a0 (error) and a1 (value); all other callee-saved
+ * registers are preserved by the firmware. */
 sbiret_t sbi_call(long arg0, long arg1, long arg2, long arg3, long arg4,
                   long arg5, long fid, long eid) {
     register long a0 __asm__("a0") = arg0;
@@ -37,6 +29,6 @@ void putchar(char ch) {
 }
 
 long getchar(void) {
-    sbiret_t ret = sbi_call(0, 0, 0, 0, 0, 0, 0, 2);
+    sbiret_t ret = sbi_call(0, 0, 0, 0, 0, 0, 0, 2 /* Console Getchar */);
     return ret.error;
 }

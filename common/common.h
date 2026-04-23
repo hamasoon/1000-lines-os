@@ -11,13 +11,10 @@
 
 #define PACKED                      __attribute__((packed))
 #define ALIGNED(x)                  __attribute__((aligned(x)))
-// prevent the compiler from generating unexpected code for the function, 
-// which is useful for context switching and interrupt handling code where we need precise control over the generated assembly instructions.
-#define NAKED                       __attribute__((naked))               
+#define NAKED                       __attribute__((naked))
 #define UNUSED(x)                   (void)(x)
 #define NORETURN                    __attribute__((noreturn))
 
-/* System calls */
 #define SYS_PUTCHAR 1
 #define SYS_GETCHAR 2
 #define SYS_EXIT    3
@@ -36,14 +33,14 @@
 typedef int bool;
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
-typedef unsigned int uint64_t;
+typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef uint64_t size_t;
 typedef uint64_t paddr_t;
 typedef uint64_t vaddr_t;
 
-/* putchar is provided by each side: kernel uses SBI Console Putchar,
- * user provides its own (syscall-based) implementation. */
+/* putchar is provided per link target: kernel → SBI Console Putchar,
+ * user → ecall to SYS_PUTCHAR. */
 void putchar(char ch);
 void *memset(void *buf, char c, size_t n);
 void *memcpy(void *dst, const void *src, size_t n);

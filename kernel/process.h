@@ -5,35 +5,25 @@
 
 #define SSTATUS_SPIE (1 << 5)
 
-#define PROCS_MAX 8         // maximum number of processes
+#define PROCS_MAX 8
 
-/* process states */
-#define PROC_UNUSED     0   // process slot is unused
-#define PROC_RUNNING    1   // process is currently running
-#define PROC_RUNNABLE   2   // process is runnable (ready to run)
-#define PROC_EXITED     3   // process has exited
+#define PROC_UNUSED     0
+#define PROC_RUNNING    1
+#define PROC_RUNNABLE   2
+#define PROC_EXITED     3
 
-#define PROC_STACK_SIZE 8192 // 8 KB stack size for each process
+#define PROC_STACK_SIZE 8192
 
-/**
- * @brief struct process - represents a process in the system
- * @pid: process ID
- * @state: current state of the process (e.g., unused, runnable)
- * @sp: stack pointer for the process
- * @page_table: page table for the process 
- * @stack: memory allocated for the process's stack
- * 
- * This structure is used to manage processes in the operating system. Each process has a unique ID, 
- * a state that indicates whether it is currently in use or runnable, 
- * a stack pointer for managing function calls and local variables, 
- * and a fixed-size stack for storing the process's execution context.
- */
+/* ALIGNED(16) on `stack` makes the compiler pad the field so that
+ * &stack[sizeof(stack)] is 16B-aligned (required for lp64 SP at call
+ * boundaries). It also bumps process_t's own alignment to 16, so every
+ * element of `static process_t procs[]` stays aligned. */
 typedef struct __process {
-    int pid;                            // process ID
-    int state;                          // current state of the process (e.g., unused, runnable)
-    vaddr_t sp;                         // stack pointer for the process
-    uint64_t* page_table;               // page table for the process
-    uint8_t stack[PROC_STACK_SIZE];     // memory allocated for the process's stack (8 KB)
+    int pid;
+    int state;
+    vaddr_t sp;
+    uint64_t *page_table;
+    uint8_t stack[PROC_STACK_SIZE] ALIGNED(16);
 } process_t;
 
 extern process_t *current_proc;
@@ -41,6 +31,7 @@ extern process_t *idle_proc;
 
 void switch_context(uint64_t *prev_sp, uint64_t *next_sp);
 process_t *create_process(const void *image, size_t image_size);
+process_t *create_kernel_thread(void (*entry)(void));
 void yield(void);
 
 #endif /* PROCESS_H */

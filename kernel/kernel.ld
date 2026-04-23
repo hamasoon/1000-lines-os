@@ -1,34 +1,38 @@
-ENTRY(boot)                                 /* Define the entry point of the kernel --> boot is the function where the kernel starts executing */
+/* OpenSBI (fw_dynamic) runs at 0x80000000 and drops into S-mode at our entry.
+ * QEMU virt with -kernel loads the ELF at 0x80200000 by convention. */
+ENTRY(boot)
 
 SECTIONS {
-    . = 0x80200000;                         /* Base address of the kernel in memory */
-    __kernel_base = .;                      /* Define a symbol for the base address of the kernel */ 
+    . = 0x80200000;
+    __kernel_base = .;
 
-    .text :{                                /* Code section. allocate .text section and .text.* sections here */
+    .text : {
         KEEP(*(.text.boot));
         *(.text .text.*);
     }
 
-    .rodata : ALIGN(4) {                    /* Read-only data section */
+    .rodata : ALIGN(8) {
         *(.rodata .rodata.*);
     }
 
-    .data : ALIGN(4) {                      /* Data section */
+    .data : ALIGN(8) {
         *(.data .data.*);
     }
 
-    .bss : ALIGN(4) {                       /* Uninitialized data section */
+    .bss : ALIGN(8) {
         __bss = .;
         *(.bss .bss.* .sbss .sbss.*);
         __bss_end = .;
     }
 
-    . = ALIGN(4);                           /* Align to 4 bytes for the stack */
-    . += 128 * 1024; /* 128KB */            /* Allocate 128KB for the stack */
-    __stack_top = .;                        /* Define the top of the stack(+128KB from the base address) */
+    /* Boot stack (psABI lp64: SP must be 16B-aligned at call boundaries). */
+    . = ALIGN(16);
+    . += 128 * 1024;
+    __stack_top = .;
 
-    . = ALIGN(4096);                        /* Align to 4KB for the free RAM */  
-    __free_ram = .;                         /* Define the start of the free RAM (after the kernel and stack) */
-    . += 64 * 1024 * 1024;                  /* 64MB */
-    __free_ram_end = .;                     /* Define the end of the free RAM */
+    /* Free RAM pool used by the kernel page allocator. */
+    . = ALIGN(4096);
+    __free_ram = .;
+    . += 64 * 1024 * 1024;
+    __free_ram_end = .;
 }
