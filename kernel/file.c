@@ -18,7 +18,8 @@ void sfs_mkfs(void) {
     uint64_t block_size = KB(4);
     uint64_t total_blocks = disk_size / block_size;
 
-    if (total_blocks < 4) PANIC("sfs: disk too small");
+    if (total_blocks < 4) 
+        PANIC("sfs: disk too small");
 
     uint64_t inodes_per_block = block_size / sizeof(sfs_inode_t);
     uint64_t target_inodes = disk_size / SFS_INODE_RATIO;
@@ -29,7 +30,9 @@ void sfs_mkfs(void) {
     uint64_t bitmap_blocks = CEIL_DIV(total_blocks, block_size * 8);
 
     uint64_t reserved = 1 + inode_table_blocks + bitmap_blocks;
-    if (total_blocks <= reserved) PANIC("sfs: disk too small for metadata");
+    if (total_blocks <= reserved) 
+        PANIC("sfs: disk too small for metadata");
+        
     uint64_t data_block_count = total_blocks - reserved;
 
     super_block.magic = SFS_MAGIC;

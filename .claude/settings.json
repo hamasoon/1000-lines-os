@@ -9,7 +9,8 @@
       "Bash(kill 17446)",
       "Bash(echo \"exit=$?\")",
       "Read(//tmp/**)",
-      "Bash(pkill -9 qemu-system-riscv64)"
+      "Bash(pkill -9 qemu-system-riscv64)",
+      "Bash(fuser /home/hamasoon/1000-lines-os/disk.img)"
     ],
     "additionalDirectories": [
       "/home/hamasoon/.claude/projects/-home-hamasoon-1000-lines-os",

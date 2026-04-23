@@ -4,6 +4,7 @@
 #include "exception.h"
 #include "process.h"
 #include "virtio.h"
+#include "file.h"
 
 /* objcopy also emits _binary_shell_bin_size, but that is an ABS symbol whose
  * value equals the size. Under -mcmodel=medany the compiler reaches it via
@@ -29,15 +30,8 @@ void kernel_main(unsigned long hartid, unsigned long fdt) {
            (unsigned long) (virtio_blk_get_capacity() / SECTOR_SIZE),
            (unsigned long) virtio_blk_get_capacity());
 
-    char buf[SECTOR_SIZE];
-    read_disk(buf, 0);
-    buf[64] = '\0';
-    printf("first 64B of sector 0: %s\n", buf);
-
-    memset(buf, 0, SECTOR_SIZE);
-    strcpy(buf, "hello from riscv64 kernel!\n");
-    write_disk(buf, 0);
-    printf("wrote back to sector 0\n");
+	sfs_init();
+	printf("sfs initialized.\n");
 
     /* idle takes the boot context: create_process sets ra to user_entry, but
      * the first yield() overwrites idle's sp with the current (boot) sp before

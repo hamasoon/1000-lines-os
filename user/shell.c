@@ -5,8 +5,17 @@ void main(void) {
 prompt:
         printf("> ");
         char cmdline[128];
-        for (int i = 0;; i++) {
+        for (int i = 0;;) {
             char ch = getchar();
+
+            if (ch == 0x7f || ch == '\b') {
+                if (i > 0) {
+                    i--;
+                    printf("\b \b");
+                }
+                continue;
+            }
+
             putchar(ch);
             if (i == sizeof(cmdline) - 1) {
                 printf("command line too long\n");
@@ -17,6 +26,7 @@ prompt:
                 break;
             } else {
                 cmdline[i] = ch;
+                i++;
             }
         }
 

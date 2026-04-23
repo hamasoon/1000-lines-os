@@ -30,6 +30,8 @@
 #define va_end                      __builtin_va_end
 #define va_arg                      __builtin_va_arg
 
+#define CEIL_DIV(x, y)             (((x) + (y) - 1) / (y))
+
 typedef int bool;
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;

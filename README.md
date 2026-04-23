@@ -131,6 +131,12 @@ OpenSBI (M-mode)
 - [ ] **메모리 할당기**
   `alloc_pages`는 bump allocator. 해제 불가. slab/buddy 기반 페이지 할당기 +
   커널 객체용 kmalloc 레이어 (xv6의 `kmem.freelist` 수준이면 시작으로 충분).
+- [ ] **swap-out / swap-in (Linux 방식 지향)**
+  장기 목표는 Linux 스타일 — `disk.img`에 MBR/GPT 파티션 테이블을 두고 SFS 파티션과
+  swap 파티션을 분리. 필요한 조각: 파티션 테이블 파서, 파티션 핸들(시작 LBA+길이)
+  추상화, `mkswap` 유사 헤더(매직 + 슬롯 비트맵), PTE의 "swapped" 인코딩 + 페이지
+  폴트에서 swap-in, 교체 정책(FIFO/clock). 단기 프로토타입은 두 번째 virtio-blk
+  디바이스로 먼저 로직만 검증 후 파티션 테이블 얹는 순서가 쉬움.
 
 ## 🔀 동시성 / 스케줄링
 

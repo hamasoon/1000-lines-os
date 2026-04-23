@@ -1,6 +1,11 @@
 #!/bin/bash
 set -xue
 
+# if disk.img doesn't exist, create a 512 MiB one filled with zeros
+if [ ! -f disk.img ]; then
+    dd if=/dev/zero of=disk.img bs=1M count=512
+fi
+
 QEMU=qemu-system-riscv64
 
 CC=clang
@@ -21,12 +26,12 @@ $OBJCOPY -Ibinary -Oelf64-littleriscv shell.bin shell.bin.o
 
 $CC $CFLAGS $INCLUDES -Wl,-Tkernel/kernel.ld -Wl,-Map=kernel.map -o kernel.elf \
     kernel/kernel.c kernel/exception.c kernel/memory.c kernel/process.c \
-    kernel/sbi.c kernel/virtio.c kernel/boot.S \
+    kernel/sbi.c kernel/virtio.c kernel/file.c kernel/boot.S \
     common/common.c shell.bin.o
 
 # OpenSBI fw_dynamic -> S-mode -> kernel entry @ 0x80200000
 $QEMU -machine virt -m 512M -bios default -nographic -serial mon:stdio --no-reboot \
     -d unimp,guest_errors,int,cpu_reset -D qemu.log \
-    -drive id=drive0,file=lorem.txt,format=raw,if=none \
+    -drive id=drive0,file=disk.img,format=raw,if=none \
     -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 \
     -kernel kernel.elf
