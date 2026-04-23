@@ -5,19 +5,19 @@ static virtio_blk_req_t *blk_req;
 static paddr_t blk_req_paddr;
 static uint64_t blk_capacity;
 
-uint64_t virtio_reg_read32(unsigned offset) {
-    return *((volatile uint64_t *) (VIRTIO_BLK_PADDR + offset));
+uint32_t virtio_reg_read32(unsigned offset) {
+    return *((volatile uint32_t *) (VIRTIO_BLK_PADDR + offset));
 }
 
 uint64_t virtio_reg_read64(unsigned offset) {
     return *((volatile uint64_t *) (VIRTIO_BLK_PADDR + offset));
 }
 
-void virtio_reg_write32(unsigned offset, uint64_t value) {
-    *((volatile uint64_t *) (VIRTIO_BLK_PADDR + offset)) = value;
+void virtio_reg_write32(unsigned offset, uint32_t value) {
+    *((volatile uint32_t *) (VIRTIO_BLK_PADDR + offset)) = value;
 }
 
-void virtio_reg_fetch_and_or32(unsigned offset, uint64_t value) {
+void virtio_reg_fetch_and_or32(unsigned offset, uint32_t value) {
     virtio_reg_write32(offset, virtio_reg_read32(offset) | value);
 }
 
@@ -99,7 +99,7 @@ static void __read_write_disk(void *buf, unsigned sector, int is_write) {
     // virtqueue 디스크립터를 구성합니다 (3개의 디스크립터 사용).
     virtio_virtq_t *vq = blk_request_vq;
     vq->descs[0].addr = blk_req_paddr;
-    vq->descs[0].len = sizeof(uint64_t) * 2 + sizeof(uint64_t);
+    vq->descs[0].len = sizeof(uint32_t) * 2 + sizeof(uint64_t);
     vq->descs[0].flags = VIRTQ_DESC_F_NEXT;
     vq->descs[0].next = 1;
 
