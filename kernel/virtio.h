@@ -38,7 +38,7 @@
  */
 typedef struct PACKED __virtq_desc {
     uint64_t addr;
-    uint32_t len;
+    uint64_t len;
     uint16_t flags;
     uint16_t next;
 } virtq_desc_t;
@@ -62,8 +62,8 @@ typedef struct PACKED __virtq_avail {
  * this request (set by the device, can be used by the driver to check how much data was read/written)
  */
 typedef struct PACKED __virtq_used_elem {
-    uint32_t id;
-    uint32_t len;
+    uint64_t id;
+    uint64_t len;
 } virtq_used_elem_t;
 
 /**
@@ -105,8 +105,8 @@ typedef struct PACKED __virtio_virtq {
  * @status: the status of the request (0 for success, non-zero for error)
  */
 typedef struct PACKED __virtio_blk_req {
-    uint32_t type;
-    uint32_t reserved;
+    uint64_t type;
+    uint64_t reserved;
     uint64_t sector;
     uint8_t data[512];
     uint8_t status;
@@ -117,7 +117,7 @@ typedef struct PACKED __virtio_blk_req {
  * @offset: the offset of the register to read from (e.g., VIRTIO_REG_MAGIC, VIRTIO_REG_VERSION)
  * @return: the 32-bit value read from the register
  */
-uint32_t virtio_reg_read32(unsigned offset);
+uint64_t virtio_reg_read32(unsigned offset);
 /**
  * @brief virtio_reg_read64 - reads a 64-bit value from a virtio device register at the given offset
  * @offset: the offset of the register to read from (e.g., VIRTIO_REG_GUEST_PAGE_SIZE)
@@ -129,13 +129,13 @@ uint64_t virtio_reg_read64(unsigned offset);
  * @offset: the offset of the register to write to (e.g., VIRTIO_REG_QUEUE_SEL, VIRTIO_REG_QUEUE_NUM)
  * @value: the 32-bit value to write to the register
  */
-void virtio_reg_write32(unsigned offset, uint32_t value);
+void virtio_reg_write32(unsigned offset, uint64_t value);
 /**
  * @brief virtio_reg_fetch_and_or32 - performs an atomic fetch-and-OR operation on a virtio device register
  * @offset: the offset of the register to modify (e.g., VIRTIO_REG_DEVICE_STATUS)
  * @value: the 32-bit value to OR with the current value of the register
  */
-void virtio_reg_fetch_and_or32(unsigned offset, uint32_t value);
+void virtio_reg_fetch_and_or32(unsigned offset, uint64_t value);
 
 /**
  * @brief virtq_init - initializes a virtqueue for the virtio device
@@ -154,18 +154,32 @@ void virtio_init(void);
  * @desc_index: the index of the head descriptor of the new request in the descriptor table
  */
 void virtq_kick(virtio_virtq_t *vq, int desc_index);
+
 /**
  * @brief virtq_is_busy - checks if the virtio device is still processing a request in the virtqueue
  * @vq: a pointer to the virtio_virtq_t structure representing the virtqueue
  * @return: true if the device is still processing a request (i.e., the used
  */
 bool virtq_is_busy(virtio_virtq_t *vq);
+
 /**
- * @brief read_write_disk - performs a read or write operation on the virtio-blk device
- * @buf: a pointer to the buffer for reading or writing data (must be at least SECTOR_SIZE bytes)
- * @sector: the sector number to read from or write to
- * @is_write: a flag indicating whether the operation is a write (non-zero) or a read (zero)
+ * @brief read_disk - performs a read operation from the virtio-blk device
+ * @buf: a pointer to the buffer where the read data will be stored (must be at least SECTOR_SIZE bytes)
+ * @sector: the sector number to read from
  */
-void read_write_disk(void *buf, unsigned sector, int is_write);
+void read_disk(void *buf, unsigned sector);
+
+/**
+ * @brief write_disk - performs a write operation on the virtio-blk device
+ * @buf: a pointer to the buffer containing the data to write (must be at least SECTOR_SIZE bytes)
+ * @sector: the sector number to write to
+ */
+void write_disk(void *buf, unsigned sector);
+
+/**
+ * @brief virtio_blk_get_capacity - returns the capacity of the virtio-blk device in bytes
+ * @return: total disk capacity in bytes (0 before virtio_init() has run)
+ */
+uint64_t virtio_blk_get_capacity(void);
 
 #endif /* VIRTIO_H */

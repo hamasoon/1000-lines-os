@@ -32,14 +32,14 @@ typedef struct __process {
     int pid;                            // process ID
     int state;                          // current state of the process (e.g., unused, runnable)
     vaddr_t sp;                         // stack pointer for the process
-    uint32_t* page_table;               // page table for the process
+    uint64_t* page_table;               // page table for the process
     uint8_t stack[PROC_STACK_SIZE];     // memory allocated for the process's stack (8 KB)
 } process_t;
 
 extern process_t *current_proc;
 extern process_t *idle_proc;
 
-void switch_context(uint32_t *prev_sp, uint32_t *next_sp);
+void switch_context(uint64_t *prev_sp, uint64_t *next_sp);
 process_t *create_process(const void *image, size_t image_size);
 void yield(void);
 

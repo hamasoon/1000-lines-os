@@ -21,8 +21,8 @@
 
 static paddr_t next_paddr;
 
-paddr_t alloc_pages(uint32_t n);
-void map_page(uint32_t *table1, vaddr_t vaddr, paddr_t paddr, uint32_t flags);
+paddr_t alloc_pages(uint64_t n);
+void map_page(uint64_t *table1, vaddr_t vaddr, paddr_t paddr, uint64_t flags);
 void init_page_table(process_t *proc);
 void init_memory(void);
 

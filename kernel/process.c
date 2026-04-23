@@ -20,7 +20,7 @@ process_t *idle_proc = &idle_proc_storage;      // sentinel representing the idl
  * saves the current stack pointer to the current process's sp field, 
  * and loads the next process's sp into the stack pointer.
  */
-NAKED void switch_context(uint32_t *prev_sp, uint32_t *next_sp) {
+NAKED void switch_context(uint64_t *prev_sp, uint64_t *next_sp) {
     __asm__ __volatile__(
         // Save callee-saved registers of the current process onto its stack
         "addi sp, sp, -13 * 4\n" // 13 callee-saved registers (ra, s0-s11) each 4 bytes
@@ -107,7 +107,7 @@ process_t *create_process(const void *image, size_t image_size) {
     // into them, and map them at USER_BASE. The entry PC is then USER_BASE.
     if (image != NULL) {
         const char *src = (const char *) image;
-        for (uint32_t off = 0; off < image_size; off += PAGE_SIZE) {
+        for (uint64_t off = 0; off < image_size; off += PAGE_SIZE) {
             paddr_t page = alloc_pages(1);
             size_t remaining = image_size - off;
             size_t copy_size = PAGE_SIZE <= remaining ? PAGE_SIZE : remaining;
@@ -119,7 +119,7 @@ process_t *create_process(const void *image, size_t image_size) {
 
     // prepare the kernel stack with initial register values for the new process
     // at the first context switch, switch_context will restore these values
-    uint32_t *sp = (uint32_t *) &proc->stack[sizeof(proc->stack)];
+    uint64_t *sp = (uint64_t *) &proc->stack[sizeof(proc->stack)];
     *--sp = 0;                      // s11
     *--sp = 0;                      // s10
     *--sp = 0;                      // s9
@@ -132,12 +132,12 @@ process_t *create_process(const void *image, size_t image_size) {
     *--sp = 0;                      // s2
     *--sp = 0;                      // s1
     *--sp = 0;                      // s0
-    *--sp = (uint32_t) user_entry;  // ra (changed!)
+    *--sp = (uint64_t) user_entry;  // ra (changed!)
 
     // initialize the process control block
     proc->pid = i + 1;
     proc->state = PROC_RUNNABLE;
-    proc->sp = (uint32_t) sp;
+    proc->sp = (uint64_t) sp;
     return proc;
 }
 
@@ -186,8 +186,8 @@ void yield(void) {
         "sfence.vma\n"
         "csrw sscratch, %[sscratch]\n"
         :
-        : [satp] "r" (SATP_SV32 | ((uint32_t) next->page_table / PAGE_SIZE)),
-          [sscratch] "r" ((uint32_t) &next->stack[sizeof(next->stack)])
+        : [satp] "r" (SATP_SV32 | ((uint64_t) next->page_table / PAGE_SIZE)),
+          [sscratch] "r" ((uint64_t) &next->stack[sizeof(next->stack)])
     );
 
     process_t *prev = current_proc;

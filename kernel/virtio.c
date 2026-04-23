@@ -5,19 +5,19 @@ static virtio_blk_req_t *blk_req;
 static paddr_t blk_req_paddr;
 static uint64_t blk_capacity;
 
-uint32_t virtio_reg_read32(unsigned offset) {
-    return *((volatile uint32_t *) (VIRTIO_BLK_PADDR + offset));
+uint64_t virtio_reg_read32(unsigned offset) {
+    return *((volatile uint64_t *) (VIRTIO_BLK_PADDR + offset));
 }
 
 uint64_t virtio_reg_read64(unsigned offset) {
     return *((volatile uint64_t *) (VIRTIO_BLK_PADDR + offset));
 }
 
-void virtio_reg_write32(unsigned offset, uint32_t value) {
-    *((volatile uint32_t *) (VIRTIO_BLK_PADDR + offset)) = value;
+void virtio_reg_write32(unsigned offset, uint64_t value) {
+    *((volatile uint64_t *) (VIRTIO_BLK_PADDR + offset)) = value;
 }
 
-void virtio_reg_fetch_and_or32(unsigned offset, uint32_t value) {
+void virtio_reg_fetch_and_or32(unsigned offset, uint64_t value) {
     virtio_reg_write32(offset, virtio_reg_read32(offset) | value);
 }
 
@@ -79,7 +79,11 @@ bool virtq_is_busy(virtio_virtq_t *vq) {
     return vq->last_used_index != *vq->used_index;
 }
 
-void read_write_disk(void *buf, unsigned sector, int is_write) {
+uint64_t virtio_blk_get_capacity(void) {
+    return blk_capacity;
+}
+
+static void __read_write_disk(void *buf, unsigned sector, int is_write) {
     if (sector >= blk_capacity / SECTOR_SIZE) {
         printf("virtio: tried to read/write sector=%d, but capacity is %d\n",
               sector, blk_capacity / SECTOR_SIZE);
@@ -95,7 +99,7 @@ void read_write_disk(void *buf, unsigned sector, int is_write) {
     // virtqueue 디스크립터를 구성합니다 (3개의 디스크립터 사용).
     virtio_virtq_t *vq = blk_request_vq;
     vq->descs[0].addr = blk_req_paddr;
-    vq->descs[0].len = sizeof(uint32_t) * 2 + sizeof(uint64_t);
+    vq->descs[0].len = sizeof(uint64_t) * 2 + sizeof(uint64_t);
     vq->descs[0].flags = VIRTQ_DESC_F_NEXT;
     vq->descs[0].next = 1;
 
@@ -125,4 +129,12 @@ void read_write_disk(void *buf, unsigned sector, int is_write) {
     // 읽기 작업의 경우, 데이터를 버퍼에 복사합니다.
     if (!is_write)
         memcpy(buf, blk_req->data, SECTOR_SIZE);
+}
+
+void write_disk(void *buf, unsigned sector) {
+    __read_write_disk(buf, sector, TRUE);
+}
+
+void read_disk(void *buf, unsigned sector) {
+    __read_write_disk(buf, sector, FALSE);
 }

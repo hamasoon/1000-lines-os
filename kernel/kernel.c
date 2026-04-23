@@ -16,16 +16,16 @@ extern char _binary_shell_bin_size[];
 void kernel_main(void) {
     init_memory();
 
-    WRITE_CSR(stvec, (uint32_t) kernel_entry);
+    WRITE_CSR(stvec, (uint64_t) kernel_entry);
 
     virtio_init();
 
     char buf[SECTOR_SIZE];
-    read_write_disk(buf, 0, FALSE /* read from the disk */);
+    read_disk(buf, 0);
     printf("first sector: %s\n", buf);
 
     strcpy(buf, "hello from kernel!!!\n");
-    read_write_disk(buf, 0, TRUE /* write to the disk */);
+    write_disk(buf, 0);
 
     idle_proc = create_process(NULL, 0); // updated!
     idle_proc->pid = 0; // idle

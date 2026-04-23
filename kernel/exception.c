@@ -115,9 +115,9 @@ void handle_syscall(trap_frame_t *f) {
 }
 
 void handle_trap(trap_frame_t *f) {
-    uint32_t scause = READ_CSR(scause);
-    uint32_t stval = READ_CSR(stval);
-    uint32_t user_pc = READ_CSR(sepc);
+    uint64_t scause = READ_CSR(scause);
+    uint64_t stval = READ_CSR(stval);
+    uint64_t user_pc = READ_CSR(sepc);
     if (scause == SCAUSE_ECALL) {
         handle_syscall(f);
         user_pc += 4;
