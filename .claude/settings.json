@@ -10,7 +10,14 @@
       "Bash(echo \"exit=$?\")",
       "Read(//tmp/**)",
       "Bash(pkill -9 qemu-system-riscv64)",
-      "Bash(fuser /home/hamasoon/1000-lines-os/disk.img)"
+      "Bash(fuser /home/hamasoon/1000-lines-os/disk.img)",
+      "Bash(clang -std=c11 -O2 -g3 -Wall -Wextra --target=riscv64-unknown-elf -march=rv64imac_zicsr_zifencei -mabi=lp64 -mcmodel=medany -mno-relax -fuse-ld=lld -fno-stack-protector -ffreestanding -nostdlib -Icommon -Ikernel -Iuser -c kernel/sbi.c -o /tmp/sbi.o)",
+      "Bash(clang -std=c11 -O2 -g3 -Wall -Wextra --target=riscv64-unknown-elf -march=rv64imac_zicsr_zifencei -mabi=lp64 -mcmodel=medany -mno-relax -fuse-ld=lld -fno-stack-protector -ffreestanding -nostdlib -Icommon -Ikernel -Iuser -c kernel/time.c -o /tmp/time.o)",
+      "Bash(bash -c ' *)",
+      "Bash(timeout --preserve-status 4 qemu-system-riscv64 -machine virt -m 512M -bios default -nographic -serial mon:stdio --no-reboot -d unimp,guest_errors,int,cpu_reset -D /tmp/qemu.log -drive id=drive0,file=disk.img,format=raw,if=none -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 -kernel kernel.elf)",
+      "Bash(timeout --preserve-status 4 qemu-system-riscv64 -machine virt -m 512M -bios default -nographic -serial mon:stdio --no-reboot -drive id=drive0,file=disk.img,format=raw,if=none -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 -kernel kernel.elf)",
+      "Bash(timeout --preserve-status 5 qemu-system-riscv64 -machine virt -m 512M -bios default -nographic -serial mon:stdio --no-reboot -drive id=drive0,file=disk.img,format=raw,if=none -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 -kernel kernel.elf)",
+      "Bash(timeout --preserve-status 3 qemu-system-riscv64 -machine virt -m 512M -bios default -nographic -serial mon:stdio --no-reboot -drive id=drive0,file=disk.img,format=raw,if=none -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 -kernel kernel.elf)"
     ],
     "additionalDirectories": [
       "/home/hamasoon/.claude/projects/-home-hamasoon-1000-lines-os",

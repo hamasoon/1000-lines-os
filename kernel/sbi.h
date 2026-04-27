@@ -12,5 +12,6 @@ sbiret_t sbi_call(long arg0, long arg1, long arg2, long arg3, long arg4,
                   long arg5, long fid, long eid);
 void putchar(char ch);
 long getchar(void);
+void sbi_set_timer(uint64_t stime_value);
 
 #endif /* SBI_H */

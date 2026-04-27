@@ -2,17 +2,31 @@
 #include "kernel.h"
 #include "sbi.h"
 #include "process.h"
+#include "time.h"
 
-/* Trap entry. Invariants on entry:
- *   sp       = trapping SP (user or kernel)
- *   sscratch = current process's kernel stack top (set by yield/switch)
- * csrrw swaps sp<->sscratch so we always run on the process's kernel stack.
- * Slot 30 holds the trapping sp; slot 31 is pad (see trap_frame_t). */
+/* Trap entry. sscratch invariant:
+ *   sscratch == 0           : we were running in S-mode (kernel preemption)
+ *   sscratch == kernel_top  : we were running in U-mode; kernel_top is the
+ *                             current proc's kernel stack top, used as the
+ *                             trap frame anchor.
+ * The two cases land on different stacks:
+ *   U-mode entry: swap sp<->sscratch puts sp = kernel_top (empty stack), so
+ *                 the trap frame goes at the very top.
+ *   S-mode entry: the swap leaves sp = 0 because sscratch was 0; we restore
+ *                 the original kernel sp from sscratch and push the trap frame
+ *                 BELOW the in-use kernel stack (which is what makes kernel
+ *                 preemption safe -- the original kernel data above is intact).
+ * On the way out, sscratch is rearmed based on sstatus.SPP: kernel_top for a
+ * U-mode return, 0 for an S-mode return. */
 NAKED
 ALIGNED(4)
 void kernel_entry(void) {
     __asm__ __volatile__(
         "csrrw sp, sscratch, sp\n"
+        /* sp=0 iff sscratch was 0 (S-mode entry). */
+        "bnez sp, 1f\n"
+        "csrr sp, sscratch\n"           /* restore kernel sp; sscratch still=kernel_sp */
+        "1:\n"
 
         "addi sp, sp, -8 * 32\n"
         "sd ra,  8 * 0(sp)\n"
@@ -46,14 +60,29 @@ void kernel_entry(void) {
         "sd s10, 8 * 28(sp)\n"
         "sd s11, 8 * 29(sp)\n"
 
+        /* slot 30 = trapping sp. sscratch holds it in both cases:
+         * U-mode entry -> user_sp (loaded by csrrw); S-mode entry -> kernel_sp
+         * (we never overwrote sscratch in the bnez branch). */
         "csrr a0, sscratch\n"
         "sd a0,  8 * 30(sp)\n"
-
-        "addi a0, sp, 8 * 32\n"
-        "csrw sscratch, a0\n"
+        /* Mark "now in S-mode" so any nested entry detects it. Hardware keeps
+         * sstatus.SIE=0 during the handler, so no nested trap should occur,
+         * but the invariant must hold across the handler regardless. */
+        "csrw sscratch, zero\n"
 
         "mv a0, sp\n"
         "call handle_trap\n"
+
+        /* Decide sscratch based on sstatus.SPP. SPP=0 -> returning to U-mode,
+         * rearm sscratch with the kernel_top of the current trap frame
+         * (= sp + 256, since the trap frame sits exactly at the top for
+         * U-mode entries). SPP=1 -> returning to S-mode, leave sscratch=0. */
+        "csrr t0, sstatus\n"
+        "andi t0, t0, 0x100\n"           /* bit 8 = SPP */
+        "bnez t0, 2f\n"
+        "addi t0, sp, 8 * 32\n"
+        "csrw sscratch, t0\n"
+        "2:\n"
 
         "ld ra,  8 * 0(sp)\n"
         "ld gp,  8 * 1(sp)\n"
@@ -115,14 +144,37 @@ void handle_syscall(trap_frame_t *f) {
     }
 }
 
+/* `code` is the lower bits of scause (SCAUSE_INTERRUPT already masked off),
+ * i.e. the cause code, NOT the sie/sip bit mask. STIE=32 (mask), but the
+ * matching cause code is 5 -- those are different numbers. */
+void handle_interrupt(uint64_t code) {
+    switch (code) {
+        case SCAUSE_S_TIMER:
+            /* Rearm before yield: sip.STIP only clears when the next deadline
+             * is programmed, so without this the same interrupt would fire
+             * again immediately after sret. */
+            sbi_set_timer(read_time() + TIMER_INTERVAL);
+            yield();
+            break;
+        default:
+            PANIC("unexpected interrupt code=%llx\n", (uint64_t) code);
+    }
+}
+
 void handle_trap(trap_frame_t *f) {
     uint64_t scause = READ_CSR(scause);
     uint64_t stval = READ_CSR(stval);
     uint64_t user_pc = READ_CSR(sepc);
-    if (scause == SCAUSE_ECALL) {
+
+    if (scause & SCAUSE_INTERRUPT) {
+        /* Async trap: resume the interrupted instruction, do NOT advance
+         * sepc the way ecall does. */
+        handle_interrupt(scause & SCAUSE_CODE_MASK);
+    } else if (scause == SCAUSE_ECALL) {
         handle_syscall(f);
         user_pc += 4;
-    } else {
+    } 
+    else {
         PANIC("unexpected trap scause=%llx, stval=%llx, sepc=%llx\n",
               (uint64_t) scause, (uint64_t) stval, (uint64_t) user_pc);
     }

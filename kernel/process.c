@@ -2,6 +2,7 @@
 #include "kernel.h"
 #include "process.h"
 #include "memory.h"
+#include "exception.h"
 
 static process_t procs[PROCS_MAX];
 static process_t idle_proc_storage;
@@ -90,15 +91,26 @@ process_t *create_kernel_thread(void (*entry)(void)) {
     return proc;
 }
 
-NAKED void user_entry(void) {
+/* First-run entry for a freshly created user process. Runs in S-mode on the
+ * proc's kernel stack. Must arm sscratch with kernel_top before sret so the
+ * next U->S trap finds a valid kernel stack. The compiler-generated prologue
+ * uses some bytes of the kernel stack; that's harmless because sret transfers
+ * control out of S-mode and the trap path resets sp from sscratch on re-entry. */
+void user_entry(void) {
+    uint64_t kernel_top =
+        (uint64_t) &current_proc->stack[sizeof(current_proc->stack)];
     __asm__ __volatile__(
+        "csrw sscratch, %[ks]      \n"
         "csrw sepc, %[sepc]        \n"
         "csrw sstatus, %[sstatus]  \n"
         "sret                      \n"
         :
-        : [sepc] "r" (USER_BASE),
+        : [ks] "r" (kernel_top),
+          [sepc] "r" (USER_BASE),
           [sstatus] "r" (SSTATUS_SPIE)
+        : "memory"
     );
+    __builtin_unreachable();
 }
 
 process_t *create_process(const void *image, size_t image_size) {
@@ -165,28 +177,48 @@ static process_t *scheduler(void) {
 }
 
 /* sfence.vma brackets satp to flush stale TLB entries and drain any in-flight
- * page-table walks. sscratch points at the next process's kernel stack top
- * so kernel_entry's csrrw sp,sscratch,sp lands on the correct stack. */
+ * page-table walks. sscratch is no longer touched here -- it stays 0 (S-mode
+ * marker) and the trap exit path / user_entry rearm it with the proc's
+ * kernel_top right before returning to U-mode.
+ *
+ * Phase 7: yield is called both cooperatively (with sstatus.SIE=1 in the
+ * caller) and from within the timer/syscall trap handler (with hardware
+ * already having forced SIE=0). To make the critical section uniform we
+ * disable interrupts on entry and restore the caller's prior SIE on exit.
+ * This guards scheduler()/current_proc/satp updates against a recursive
+ * timer trap. */
 void yield(void) {
+    uint64_t prev_sie = READ_CSR(sstatus) & SSTATUS_SIE;
+    CLEAR_CSR(sstatus, SSTATUS_SIE);
+
     process_t *next = scheduler();
-    if (next == current_proc)
+    if (next == current_proc) {
+        if (prev_sie)
+            SET_CSR(sstatus, SSTATUS_SIE);
         return;
+    }
 
     uint64_t satp = SATP_SV39 |
                     ((uint64_t) next->page_table >> PAGE_OFFSET_BITS);
-    uint64_t sscratch = (uint64_t) &next->stack[sizeof(next->stack)];
 
     __asm__ __volatile__(
         "sfence.vma zero, zero\n"
         "csrw satp, %[satp]\n"
         "sfence.vma zero, zero\n"
-        "csrw sscratch, %[sscratch]\n"
         :
-        : [satp] "r" (satp), [sscratch] "r" (sscratch)
+        : [satp] "r" (satp)
         : "memory"
     );
 
     process_t *prev = current_proc;
     current_proc = next;
     switch_context(&prev->sp, &next->sp);
+
+    /* Resumed in our caller's context. prev_sie is the value local to that
+     * stack frame, so even after multiple round-trips through other procs we
+     * restore the exact SIE state the caller had. Note: when yield is called
+     * from a trap handler, prev_sie is 0 and we skip the re-enable -- the
+     * trap exit's sret then restores SIE from SPIE for us. */
+    if (prev_sie)
+        SET_CSR(sstatus, SSTATUS_SIE);
 }

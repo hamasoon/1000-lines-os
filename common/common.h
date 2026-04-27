@@ -20,6 +20,8 @@
 #define SYS_EXIT    3
 #define SYS_READ    4
 #define SYS_WRITE   5
+#define SYS_FORK    6
+#define SYS_EXEC    7
 
 #define align_up(value, align)      __builtin_align_up(value, align)
 #define ALIGN_UP(value, align)      (((value) + (align) - 1) & ~((align) - 1))

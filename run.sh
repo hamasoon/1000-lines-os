@@ -26,7 +26,7 @@ $OBJCOPY -Ibinary -Oelf64-littleriscv shell.bin shell.bin.o
 
 $CC $CFLAGS $INCLUDES -Wl,-Tkernel/kernel.ld -Wl,-Map=kernel.map -o kernel.elf \
     kernel/kernel.c kernel/exception.c kernel/memory.c kernel/process.c \
-    kernel/sbi.c kernel/virtio.c kernel/file.c kernel/boot.S \
+    kernel/sbi.c kernel/virtio.c kernel/file.c kernel/time.c kernel/boot.S \
     common/common.c shell.bin.o
 
 # OpenSBI fw_dynamic -> S-mode -> kernel entry @ 0x80200000

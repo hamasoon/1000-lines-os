@@ -5,6 +5,8 @@
 #include "process.h"
 #include "virtio.h"
 #include "file.h"
+#include "sbi.h"
+#include "time.h"
 
 /* objcopy also emits _binary_shell_bin_size, but that is an ABS symbol whose
  * value equals the size. Under -mcmodel=medany the compiler reaches it via
@@ -16,6 +18,17 @@ extern char _binary_shell_bin_end[];
 void kernel_main(unsigned long hartid, unsigned long fdt) {
     init_memory();
     WRITE_CSR(stvec, (uint64_t) kernel_entry);
+    /* sscratch = 0 marks "running in S-mode" -- the trap entry uses this to
+     * pick between the U-mode entry path (swap to kernel_top) and the S-mode
+     * entry path (push the trap frame below the in-use kernel stack). */
+    WRITE_CSR(sscratch, 0);
+
+    /* Unmask the supervisor timer source and arm the first deadline.
+     * user_entry() sets sstatus.SPIE on each U-mode entry, so user code runs
+     * with sstatus.SIE=1; STIE then lets the timer reach the trap handler.
+     * handle_interrupt() rearms on every tick. */
+    SET_CSR(sie, SIE_STIE);
+    sbi_set_timer(read_time() + TIMER_INTERVAL);
 
     printf("Hello from riscv64 S-mode! (paging off)\n");
     printf("  hartid = %lu\n", (unsigned long) hartid);
@@ -48,6 +61,13 @@ void kernel_main(unsigned long hartid, unsigned long fdt) {
 
     create_process(_binary_shell_bin_start, shell_size);
     printf("Yielding to shell (user-mode)...\n");
+
+    /* Phase 7: kernel preemption. From here on the kernel itself runs with
+     * sstatus.SIE=1, so a timer can preempt S-mode code (e.g. the wfi loop
+     * below or another kernel thread). yield() saves/disables/restores SIE
+     * across its critical section; the trap handler runs with SIE=0
+     * (hardware-cleared on entry) and sret restores SIE from SPIE. */
+    SET_CSR(sstatus, SSTATUS_SIE);
 
     yield();
 

@@ -32,3 +32,10 @@ long getchar(void) {
     sbiret_t ret = sbi_call(0, 0, 0, 0, 0, 0, 0, 2 /* Console Getchar */);
     return ret.error;
 }
+
+/* Legacy Set Timer (EID 0x00). Programs the next S-mode timer interrupt to
+ * fire when the `time` CSR reaches stime_value. On RV64 the full 64-bit
+ * value is passed in a0; the firmware also clears any pending STIP. */
+void sbi_set_timer(uint64_t stime_value) {
+    sbi_call((long)stime_value, 0, 0, 0, 0, 0, 0, 0x00 /* Set Timer */);
+}
