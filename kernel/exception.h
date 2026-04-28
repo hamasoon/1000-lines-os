@@ -35,10 +35,35 @@
 /* sstatus bit positions used by the kernel. SSTATUS_SPIE lives in process.h
  * for legacy reasons; the trap path needs SIE and SPP here. */
 #define SSTATUS_SIE             (1ULL << 1)
+#define SSTATUS_SPIE            (1ULL << 5)
+#define SSTATUS_UBE             (1ULL << 6)
 #define SSTATUS_SPP             (1ULL << 8)
+#define SSTATUS_SUM             (1ULL << 18)
+#define SSTATUS_MXR             (1ULL << 19)
 
-#define SCAUSE_S_TIMER          5
-#define SCAUSE_ECALL            8
+/* Interrupt codes */
+#define IRQ_S_SOFT           1
+#define IRQ_M_SOFT           3
+#define IRQ_S_TIMER          5
+#define IRQ_S_EXT            9
+
+/* Exception codes */
+#define EXC_INST_MISALIGNED     0
+#define EXC_INST_ACCESS         1
+#define EXC_ILLEGAL_INST        2
+#define EXC_BREAKPOINT          3
+#define EXC_LOAD_MISALIGNED     4
+#define EXC_LOAD_ACCESS         5
+#define EXC_STORE_MISALIGNED    6
+#define EXC_STORE_ACCESS        7
+#define EXC_U_ECALL             8
+#define EXC_S_ECALL             9
+#define EXC_M_ECALL             11
+#define EXC_INST_PAGE_FAULT     12
+#define EXC_LOAD_PAGE_FAULT     13
+#define EXC_STORE_PAGE_FAULT    15
+
+/* Check interrupt or exception */
 #define SCAUSE_INTERRUPT        (1ULL << 63)
 #define SCAUSE_CODE_MASK        (~SCAUSE_INTERRUPT)
 

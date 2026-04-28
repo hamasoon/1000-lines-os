@@ -149,7 +149,7 @@ void handle_syscall(trap_frame_t *f) {
  * matching cause code is 5 -- those are different numbers. */
 void handle_interrupt(uint64_t code) {
     switch (code) {
-        case SCAUSE_S_TIMER:
+        case IRQ_S_TIMER:
             /* Rearm before yield: sip.STIP only clears when the next deadline
              * is programmed, so without this the same interrupt would fire
              * again immediately after sret. */
@@ -170,7 +170,7 @@ void handle_trap(trap_frame_t *f) {
         /* Async trap: resume the interrupted instruction, do NOT advance
          * sepc the way ecall does. */
         handle_interrupt(scause & SCAUSE_CODE_MASK);
-    } else if (scause == SCAUSE_ECALL) {
+    } else if (scause == EXC_U_ECALL) {
         handle_syscall(f);
         user_pc += 4;
     } 
