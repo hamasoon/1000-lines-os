@@ -65,6 +65,10 @@ void kernel_entry(void) {
          * (we never overwrote sscratch in the bnez branch). */
         "csrr a0, sscratch\n"
         "sd a0,  8 * 30(sp)\n"
+        /* slot 31 = sstatus at trap entry. Saved so that nested traps via
+         * context switches don't clobber THIS trap's SPP/SPIE before sret. */
+        "csrr a0, sstatus\n"
+        "sd a0,  8 * 31(sp)\n"
         /* Mark "now in S-mode" so any nested entry detects it. Hardware keeps
          * sstatus.SIE=0 during the handler, so no nested trap should occur,
          * but the invariant must hold across the handler regardless. */
@@ -73,11 +77,14 @@ void kernel_entry(void) {
         "mv a0, sp\n"
         "call handle_trap\n"
 
-        /* Decide sscratch based on sstatus.SPP. SPP=0 -> returning to U-mode,
-         * rearm sscratch with the kernel_top of the current trap frame
-         * (= sp + 256, since the trap frame sits exactly at the top for
-         * U-mode entries). SPP=1 -> returning to S-mode, leave sscratch=0. */
-        "csrr t0, sstatus\n"
+        /* Restore sstatus from the trap frame so sret sees THIS trap's
+         * SPP/SPIE, not whatever a nested trap left in the live CSR. */
+        "ld t0,  8 * 31(sp)\n"
+        "csrw sstatus, t0\n"
+        /* Decide sscratch based on the saved sstatus.SPP. SPP=0 -> returning
+         * to U-mode, rearm sscratch with the kernel_top of the current trap
+         * frame (= sp + 256, since the trap frame sits exactly at the top
+         * for U-mode entries). SPP=1 -> returning to S-mode, leave sscratch=0. */
         "andi t0, t0, 0x100\n"           /* bit 8 = SPP */
         "bnez t0, 2f\n"
         "addi t0, sp, 8 * 32\n"

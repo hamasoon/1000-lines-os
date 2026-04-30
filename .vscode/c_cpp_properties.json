@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "riscv64-kernel",
-            "compilerPath": "/usr/bin/clang",
+            "compilerPath": "/usr/bin/clang-18",
             "compilerArgs": [
                 "--target=riscv64-unknown-elf",
                 "-march=rv64imac_zicsr_zifencei",

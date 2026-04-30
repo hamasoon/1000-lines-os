@@ -67,9 +67,12 @@
 #define SCAUSE_INTERRUPT        (1ULL << 63)
 #define SCAUSE_CODE_MASK        (~SCAUSE_INTERRUPT)
 
-/* 31 GPRs * 8B = 248B, padded to 256B (16B aligned). lp64 psABI requires
- * SP 16B-aligned at function call boundaries; 248B alone would leave
- * handle_trap()'s entry SP off by 8. */
+/* 31 GPRs + sstatus = 32 * 8B = 256B (16B aligned). sstatus must be saved
+ * and restored across the trap because nested traps via context switches
+ * (e.g. timer preempts kernel -> switch to user proc -> user ecall ->
+ * switch back) leave the LIVE sstatus reflecting the most-recent trap's
+ * SPP. Without per-trap-frame sstatus, the outer trap's sret would use
+ * the inner trap's SPP and return to the wrong privilege mode. */
 typedef struct __trap_frame {
     uint64_t ra;
     uint64_t gp;
@@ -102,7 +105,7 @@ typedef struct __trap_frame {
     uint64_t s10;
     uint64_t s11;
     uint64_t sp;        /* trapping sp (user or kernel) */
-    uint64_t _pad;      /* alignment only -- never touched by asm */
+    uint64_t sstatus;   /* sstatus at trap entry; restored before sret */
 } trap_frame_t;
 
 void kernel_entry(void);

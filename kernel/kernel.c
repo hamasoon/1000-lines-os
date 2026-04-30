@@ -7,6 +7,7 @@
 #include "file.h"
 #include "sbi.h"
 #include "time.h"
+#include "spinlock.h"
 
 /* objcopy also emits _binary_shell_bin_size, but that is an ABS symbol whose
  * value equals the size. Under -mcmodel=medany the compiler reaches it via
@@ -15,7 +16,7 @@
 extern char _binary_shell_bin_start[];
 extern char _binary_shell_bin_end[];
 
-void kernel_main(unsigned long hartid, unsigned long fdt) {
+void kernel_main(uint64_t hartid, uint64_t fdt) {
     init_memory();
     WRITE_CSR(stvec, (uint64_t) kernel_entry);
     /* sscratch = 0 marks "running in S-mode" -- the trap entry uses this to
@@ -31,7 +32,7 @@ void kernel_main(unsigned long hartid, unsigned long fdt) {
     sbi_set_timer(read_time() + TIMER_INTERVAL);
 
     printf("Hello from riscv64 S-mode! (paging off)\n");
-    printf("  hartid = %lu\n", (unsigned long) hartid);
+    printf("  hartid = %lu\n", (uint64_t) hartid);
     printf("  fdt    = %p\n", (void *) fdt);
 
     enable_paging();
@@ -40,8 +41,8 @@ void kernel_main(unsigned long hartid, unsigned long fdt) {
 
     virtio_init();
     printf("virtio-blk: capacity = %lu sectors (%lu bytes)\n",
-           (unsigned long) (virtio_blk_get_capacity() / SECTOR_SIZE),
-           (unsigned long) virtio_blk_get_capacity());
+           (uint64_t) (virtio_blk_get_capacity() / SECTOR_SIZE),
+           (uint64_t) virtio_blk_get_capacity());
 
 	sfs_init();
 	printf("sfs initialized.\n");
@@ -57,7 +58,7 @@ void kernel_main(unsigned long hartid, unsigned long fdt) {
     printf("shell image: %p .. %p (%lu bytes)\n",
            (void *) _binary_shell_bin_start,
            (void *) _binary_shell_bin_end,
-           (unsigned long) shell_size);
+           (uint64_t) shell_size);
 
     create_process(_binary_shell_bin_start, shell_size);
     printf("Yielding to shell (user-mode)...\n");

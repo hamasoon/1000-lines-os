@@ -4,11 +4,21 @@
 #include "memory.h"
 #include "exception.h"
 
-static process_t procs[PROCS_MAX];
+static cpu_t cpus[MAX_CPUS];
+static process_t procs[MAX_PROCS];
 static process_t idle_proc_storage;
 
 process_t *current_proc = &idle_proc_storage;
 process_t *idle_proc = &idle_proc_storage;
+
+cpu_t *get_cpu(void) {
+    uint64_t hart_id = READ_CSR(mhartid);
+    for (int i = 0; i < MAX_CPUS; i++) {
+        if (cpus[i].hart_id == hart_id)
+            return &cpus[i];
+    }
+    PANIC("unexpected hartid %lu\n", (uint64_t) hart_id);
+}
 
 /* Saves callee-saved (ra, s0..s11) to the current kernel stack, records sp
  * in *prev_sp, then loads *next_sp and restores the same slots. The trailing
@@ -59,7 +69,7 @@ NAKED void switch_context(uint64_t *prev_sp, uint64_t *next_sp) {
 process_t *create_kernel_thread(void (*entry)(void)) {
     process_t *proc = NULL;
     int i;
-    for (i = 0; i < PROCS_MAX; i++) {
+    for (i = 0; i < MAX_PROCS; i++) {
         if (procs[i].state == PROC_UNUSED) {
             proc = &procs[i];
             break;
@@ -116,7 +126,7 @@ void user_entry(void) {
 process_t *create_process(const void *image, size_t image_size) {
     process_t *proc = NULL;
     int i;
-    for (i = 0; i < PROCS_MAX; i++) {
+    for (i = 0; i < MAX_PROCS; i++) {
         if (procs[i].state == PROC_UNUSED) {
             proc = &procs[i];
             break;
@@ -166,8 +176,8 @@ static process_t *scheduler(void) {
                     ? 0
                     : (int)(current_proc - procs + 1);
 
-    for (int i = 0; i < PROCS_MAX; i++) {
-        process_t *p = &procs[(start_idx + i) % PROCS_MAX];
+    for (int i = 0; i < MAX_PROCS; i++) {
+        process_t *p = &procs[(start_idx + i) % MAX_PROCS];
         if (p->state == PROC_EXITED)
             p->state = PROC_UNUSED;
         if (p != idle_proc && p->state == PROC_RUNNABLE)
@@ -188,8 +198,8 @@ static process_t *scheduler(void) {
  * This guards scheduler()/current_proc/satp updates against a recursive
  * timer trap. */
 void yield(void) {
-    uint64_t prev_sie = READ_CSR(sstatus) & SSTATUS_SIE;
-    CLEAR_CSR(sstatus, SSTATUS_SIE);
+    uint64_t flags;
+    spinlock_acquire(&scheduler_lock, &flags);
 
     process_t *next = scheduler();
     if (next == current_proc) {
@@ -212,7 +222,9 @@ void yield(void) {
 
     process_t *prev = current_proc;
     current_proc = next;
+    current_proc->state = PROC_RUNNING;
     switch_context(&prev->sp, &next->sp);
+    prev->state = PROC_RUNNABLE;
 
     /* Resumed in our caller's context. prev_sie is the value local to that
      * stack frame, so even after multiple round-trips through other procs we

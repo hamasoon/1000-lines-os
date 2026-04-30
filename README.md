@@ -159,12 +159,11 @@ OpenSBI (M-mode)
   현재 `__read_write_disk`는 busy-wait (`while (virtq_is_busy)`). 인터럽트 기반
   완료 통지로 프로세스를 재울 수 있게.
 - [ ] **UART 직결 드라이버 (SBI 탈피)**
-  현재 putchar/getchar는 SBI ecall. 학습용으로 NS16550A UART (QEMU virt
-  `0x10000000`) 직접 제어.
+  현재 putchar/getchar는 SBI ecall. 학습용으로 NS16550A UART (QEMU virt `0x10000000`) 직접 제어.
 
 ## 🗄️ 파일시스템
 
-- [ ] **tarfs (읽기 전용)**
+- [ ] **sfs (Simple File System)**
   레포에 `kernel/file.c/h` 스켈레톤 존재. USTAR 포맷 ramdisk를 shell.bin과
   같은 방식으로 임베드하고 `read()` syscall로 읽기.
 - [ ] **블록 캐시**
